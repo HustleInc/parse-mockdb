@@ -55,11 +55,11 @@ function itemQueryP(price) {
 
 describe('ParseMock', function(){
   beforeEach(function() {
-    Parse.MockDB.mockDB();
+    ParseMockDB.mockDB();
   });
 
   afterEach(function() {
-    Parse.MockDB.cleanUp();
+    ParseMockDB.cleanUp();
   });
 
   it("should save correctly", function(done) {
