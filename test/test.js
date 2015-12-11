@@ -524,6 +524,17 @@ describe('ParseMock', function(){
     })
   })
 
+  it("should handle $regex queries", function(done) {
+    createBrandP("Acme").then(function(item) {
+      var query = new Parse.Query(Brand);
+      query.startsWith("name", "Ac");
+      return query.find();
+    }).then(function(results) {
+      assert.equal(results.length, 1);
+      done();
+    })
+  })
+
 /**
  *  see: https://github.com/ParsePlatform/Parse-SDK-JS/issues/91
  *
@@ -824,5 +835,26 @@ describe('ParseMock', function(){
       });
     })
   })
+
+  it('successfully uses containsAll query', function(done) {
+    Parse.Promise.when([createItemP(30), createItemP(20)]).then((item1, item2) => {
+      const store = new Store({
+        items: [item1.toPointer(), item2.toPointer()],
+      });
+      return store.save().then(savedStore => {
+        const query = new Parse.Query(Store);
+        query.containsAll("items", [item1.toPointer(), item2.toPointer()]);
+        return query.find();
+      }).then(stores => {
+        assert(stores.length === 1);
+        const query = new Parse.Query(Store);
+        query.containsAll("items", [item2.toPointer(), 4]);
+        return query.find();
+      }).then(stores => {
+        assert(stores.length === 0);
+        done();
+      });
+    });
+  });
 
 });
