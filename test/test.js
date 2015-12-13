@@ -25,6 +25,13 @@ class Store extends Parse.Object {
 }
 Parse.Object.registerSubclass('Store', Store);
 
+class Collection extends Parse.Object {
+  constructor(attributes, options) {
+    super('Collection', attributes, options);
+  }
+}
+Parse.Object.registerSubclass('Collection', Collection);
+
 function createBrandP(name) {
   var brand = new Brand();
   brand.set("name", name);
@@ -794,6 +801,105 @@ describe('ParseMock', function(){
             assert(moreBrands.length === 1);
             assert(moreBrands[0].id !== brands[0].id);
             done();
+          });
+        });
+      });
+    });
+  });
+
+  context('Parse.Relation support', function() {
+    it('should find 2 items after add relation', function (done) {
+      createBrandP("Acme").then(function(brand) {
+        createBrandP("Acme 2").then(function(brand2) {
+          createBrandP("Acme 3").then(function(brand3) {
+            var collection = new Collection();
+            var brands = collection.relation('brands');
+            brands.add(brand);
+            brands.add(brand2);
+
+            collection.save().then(function(reply) {
+              var brandQuery = reply.relation('brands').query();
+              brandQuery.find().then(function(brands) {
+                assert(brands.length === 2);
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('should find 1 items after remove relation', function (done) {
+      createBrandP("Acme").then(function(brand) {
+        createBrandP("Acme 2").then(function(brand2) {
+          createBrandP("Acme 3").then(function(brand3) {
+            var collection = new Collection();
+            var brands = collection.relation('brands');
+            brands.add(brand);
+            brands.add(brand2);
+
+            collection.save().then(function(collection) {
+              var brands = collection.relation('brands');
+              brands.remove(brand);
+              collection.save().then(function(reply) {
+                var brandQuery = reply.relation('brands').query();
+                brandQuery.find().then(function(brands) {
+                  assert(brands.length === 1);
+                  assert(brands[0].id === brand2.id);
+                  done();
+                });
+              })
+            });
+          });
+        });
+      });
+    });
+
+    it('should find 1 items after batch relation', function (done) {
+      createBrandP("Acme").then(function(brand) {
+        createBrandP("Acme 2").then(function(brand2) {
+          createBrandP("Acme 3").then(function(brand3) {
+            var collection = new Collection();
+            var brands = collection.relation('brands');
+            brands.add(brand);
+            brands.add(brand2);
+
+            collection.save().then(function(collection) {
+              var brands = collection.relation('brands');
+              brands.remove(brand);
+              brands.remove(brand2);
+              brands.add(brand3);
+              collection.save().then(function(reply) {
+                var brandQuery = reply.relation('brands').query();
+                brandQuery.find().then(function(brands) {
+                  assert(brands.length === 1);
+                  assert(brands[0].id === brand3.id);
+                  done();
+                });
+              })
+            });
+          });
+        });
+      });
+    });
+
+    it('should get an empty array when objectId not in relation', function (done) {
+      createBrandP("Acme").then(function(brand) {
+        createBrandP("Acme 2").then(function(brand2) {
+          createBrandP("Acme 3").then(function(brand3) {
+            var collection = new Collection();
+            var brands = collection.relation('brands');
+            brands.add(brand);
+            brands.add(brand3);
+
+            collection.save().then(function(collection) {
+              var brandQuery = collection.relation('brands').query();
+              brandQuery.equalTo('objectId', brand2.id);
+              brandQuery.find().then(function(brands) {
+                assert(brands.length === 0);
+                done();
+              });
+            });
           });
         });
       });
