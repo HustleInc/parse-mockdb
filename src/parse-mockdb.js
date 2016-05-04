@@ -115,24 +115,9 @@ function runHook(className, hookType, data) {
     const modelData = Object.assign(new Object, data, {className});
     const model = Parse.Object.fromJSON(modelData);
 
-    // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
-    // value here.
-    var beforeSaveOrBeforeDeleteRequestObject = {
-      installationId: 'parse-mockdb',
-      master: false,
-      object: model,
-      user: "ParseMockDB doesn't define request.user."
-    };
-
-    return hook(beforeSaveOrBeforeDeleteRequestObject).done((beforeSaveOverrideValue) => {
-      debugPrint('HOOK', { beforeSaveOverrideValue });
-
-      // Unlike BeforeDeleteResponse, BeforeSaveResponse might specify
-      var objectToProceedWith = (hookType === 'beforeSave' && beforeSaveOverrideValue)
-        ? _.cloneDeep(beforeSaveOverrideValue.toJSON())
-        : model.toJSON();
-
-      return Parse.Promise.as(_.omit(objectToProceedWith, "ACL"));
+    return hook.bind(model)().then((result) => {
+      debugPrint('HOOK', result);
+      return Parse.Promise.as(result.toJSON());
     });
   }
   return Parse.Promise.as(data);
@@ -298,30 +283,12 @@ function normalizePath(path) {
 
 function handleRequest(method, path, body) {
   var explodedPath = normalizePath(path).split('/');
-
-  var request;
-
-  switch(explodedPath[0]) {
-    case 'users': {
-      request = {
-        method: method,
-        className: '_User',
-        data: body,
-        objectId: explodedPath[1],
-      };
-      break;
-    }
-    case 'classes':
-    default: {
-      request = {
-        method: method,
-        className: explodedPath[1],
-        data: body,
-        objectId: explodedPath[2],
-      };
-    }
-  }
-
+  var request = {
+    method: method,
+    className: explodedPath[1],
+    data: body,
+    objectId: explodedPath[2],
+  };
   return HANDLERS[method](request);
 }
 
@@ -444,10 +411,8 @@ function handleDeleteRequest(request) {
   const collection = getCollection(request.className);
   var objToDelete = collection[request.objectId];
 
-  return runHook(request.className, 'beforeDelete', objToDelete).then(result => {
-    delete collection[request.objectId];
-    return Parse.Promise.as(respond(200, {}));
-  });
+  delete collection[request.objectId]
+  return Parse.Promise.as(respond(200, {}));
 }
 
 function makePointer(className, id) {
