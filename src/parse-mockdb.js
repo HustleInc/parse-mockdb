@@ -287,6 +287,7 @@ function normalizePath(path) {
 const SPECIAL_CLASS_NAMES = {
   roles: '_Role',
   users: '_User',
+  push: '_Push'
 }
 
 function handleRequest(method, path, body) {
