@@ -917,7 +917,7 @@ describe('ParseMock', function(){
       var query = relation.query();
       return query.find();
     }).then((items) => {
-      assert(items.length === 2);
+      assert.equal(items.length, 2);
       var relation = store.relation('items');
       relation.remove(items[1]);
       return store.save();
@@ -929,5 +929,80 @@ describe('ParseMock', function(){
       done();
     });
   });
+
+  it('should handle a direct query on a relation field', function(done) {
+    var store = new Store({name: "store 1"});
+    var store2 = new Store({name: "store 2"});
+    var tpId;
+
+    var paperTowels = createItemP(20, 'paper towels');
+    var toothPaste = createItemP(30, 'tooth paste');
+    var toothBrush = createItemP(50, 'tooth brush');
+    Parse.Promise.when(
+      paperTowels,
+      toothPaste,
+      toothBrush,
+      store,
+      store2
+    ).then((paperTowels, toothPaste, toothBrush) => {
+      tpId = toothPaste.id;
+      var relation = store2.relation('items');
+      relation.add(paperTowels);
+      relation.add(toothPaste);
+      return store2.save()
+    }).then(() => {
+      var query = new Parse.Query(Store);
+      query.equalTo('items', Item.createWithoutData(tpId));
+      return query.find();
+    }).then((results) => {
+      assert.equal(results.length, 1);
+      assert.equal(results[0].get('name'), "store 2");
+      done();
+    });
+  });
+
+  it('should handle the User class', function(done) {
+    var user = new Parse.User({name: "Turtle"});
+    user.save().then((savedUser) => {
+      return (new Parse.Query(Parse.User).find())
+    }).then((foundUsers) => {
+      assert.equal(foundUsers.length, 1);
+      assert.equal(foundUsers[0].get('name'), "Turtle");
+      done();
+    })
+  })
+
+  it('should handle the Role class', function(done) {
+    var roleACL = new Parse.ACL();
+    roleACL.setPublicReadAccess(true);
+    var role = new Parse.Role("Turtle", roleACL);
+    role.save().then((savedRole) => {
+      return (new Parse.Query(Parse.Role).find())
+    }).then((foundRoles) => {
+      assert.equal(foundRoles.length, 1);
+      assert.equal(foundRoles[0].get('name'), "Turtle");
+      done();
+    })
+  })
+
+  it('should handle redirectClassNameForKey', function(done) {
+    var user = new Parse.User({name: "T Rutlidge"})
+    user.save().then((savedUser) => {
+      var roleACL = new Parse.ACL();
+      roleACL.setPublicReadAccess(true);
+
+      var role = new Parse.Role("Turtle", roleACL);
+      role.getUsers().add(savedUser);
+      return role.save();
+    }).then((savedRole) => {
+      return (new Parse.Query(Parse.Role)).equalTo('name', 'Turtle').first();
+    }).then((foundRole) => {
+      return foundRole.getUsers().query().find();
+    }).then((foundUsers) => {
+      assert.equal(foundUsers.length, 1);
+      assert.equal(foundUsers[0].get('name'), "T Rutlidge");
+      done();
+    });
+  })
 
 });

@@ -21,8 +21,10 @@ const HANDLERS = {
 
 var db = {};
 var hooks = {};
-var relations = {};
+var masks = {};
 
+var indirect = null;
+var outOfBandResults = null;
 var default_controller = null;
 var mocked = false;
 
@@ -86,19 +88,6 @@ function getHook(className, hookType) {
   }
 }
 
-function getRelation(className, id, key) {
-  if (!relations[className]) {
-    relations[className] = {};
-  }
-  if (!relations[className][id]) {
-    relations[className][id] = {};
-  }
-  if (!relations[className][id][key]) {
-    relations[className][id][key] = [];
-  }
-  return relations[className][id][key];
-}
-
 /**
  * Executes a registered hook with data provided.
  *
@@ -152,6 +141,10 @@ function applyOps(data, ops, className) {
     } else {
       throw new Error("Unknown update operator:" + key);
     }
+
+    if (MASKED_UPDATE_OPS.has(operator)) {
+      getMask(className).add(key);
+    }
   }
 }
 
@@ -165,6 +158,8 @@ function ensureArray(object, key) {
     throw new Error("Can't perform array operaton on non-array field");
   }
 }
+
+const MASKED_UPDATE_OPS = new Set(["AddRelation", "RemoveRelation"]);
 
 /**
  * Operator functions assume binding to **object** on which update operator is to be applied.
@@ -203,13 +198,15 @@ const UPDATE_OPERATORS = {
     delete this[key];
   },
   AddRelation: function(key, value, className) {
-    const relation = getRelation(className, this.objectId, key);
+    ensureArray(this, key);
+    var relation = this[key];
     value.objects.forEach(pointer => {
       relation.push(pointer);
     });
   },
   RemoveRelation: function(key, value, className) {
-    const relation = getRelation(className, this.objectId, key);
+    ensureArray(this, key);
+    var relation = this[key];
     value.objects.forEach(item => {
       _.remove(relation, pointer => objectsAreEqual(pointer, item));
     })
@@ -218,7 +215,7 @@ const UPDATE_OPERATORS = {
 
 function debugPrint(prefix, object) {
   if (CONFIG.DEBUG) {
-    console.log('[' + prefix + ']', JSON.stringify(object, null, 4));
+    console.log(['[',']'].join(prefix), JSON.stringify(object, null, 4));
   }
 }
 
@@ -227,6 +224,13 @@ function getCollection(collection) {
     db[collection] = {}
   }
   return db[collection];
+}
+
+function getMask(collection) {
+  if (!masks[collection]) {
+    masks[collection] = new Set();
+  }
+  return masks[collection];
 }
 
 var MockRESTController = {
@@ -243,7 +247,6 @@ var MockRESTController = {
     return result.then(function(result) {
       // Status of database after handling request above
       debugPrint('DB', db);
-      debugPrint('RELATIONS', relations);
       debugPrint('RESPONSE', result.response);
       return Parse.Promise.when(result.response, result.status);
     });
@@ -281,13 +284,21 @@ function normalizePath(path) {
   return path.replace('/1/', '');
 }
 
+const SPECIAL_CLASS_NAMES = {
+  roles: '_Role',
+  users: '_User',
+}
+
 function handleRequest(method, path, body) {
-  var explodedPath = normalizePath(path).split('/');
+  const explodedPath = normalizePath(path).split('/');
+  const start = explodedPath.shift();
+  const className = start === 'classes' ? explodedPath.shift() : SPECIAL_CLASS_NAMES[start]
+
   var request = {
     method: method,
-    className: explodedPath[1],
+    className,
     data: body,
-    objectId: explodedPath[2],
+    objectId: explodedPath.shift(),
   };
   return HANDLERS[method](request);
 }
@@ -304,9 +315,10 @@ function respond(status, response) {
  */
 function handleGetRequest(request) {
   const objId = request.objectId ;
+  var className = request.className;
   if (objId) {
     // Object.fetch() query
-    const collection = getCollection(request.className);
+    const collection = getCollection(className);
     const currentObject = collection[objId];
     if (!currentObject) {
       return Parse.Promise.as(respond(404, {
@@ -318,13 +330,23 @@ function handleGetRequest(request) {
     return Parse.Promise.as(respond(200, match));
   }
 
-  var matches = recursivelyMatch(request.className, request.data.where);
+  const data = request.data;
+  indirect = data.redirectClassNameForKey
+
+  var matches = recursivelyMatch(className, data.where);
+
+  if (indirect) {
+    matches = outOfBandResults;
+  }
 
   if (request.data.count) {
     return Parse.Promise.as(respond(200, { count: matches.length}));
   }
 
-  matches = queryMatchesAfterIncluding(matches, request.data.include);
+  matches = queryMatchesAfterIncluding(matches, data.include);
+
+  const toOmit = Array.from(getMask(className));
+  matches = matches.map((match) =>  _.omit(match, toOmit));
 
   // TODO: Can we just call toJSON() in order to avoid this?
   matches.forEach(match => {
@@ -336,8 +358,8 @@ function handleGetRequest(request) {
     }
   })
 
-  var limit = request.data.limit || DEFAULT_LIMIT;
-  var startIndex = request.data.skip || 0;
+  var limit = data.limit || DEFAULT_LIMIT;
+  var startIndex = data.skip || 0;
   var endIndex = startIndex + limit;
   var response = { results: matches.slice(startIndex, endIndex) };
   return Parse.Promise.as(respond(200, response));
@@ -347,9 +369,10 @@ function handleGetRequest(request) {
  * Handles a POST request (Parse.Object.save())
  */
 function handlePostRequest(request) {
-  const collection = getCollection(request.className);
+  const className = request.className;
+  const collection = getCollection(className);
 
-  return runHook(request.className, 'beforeSave', request.data).then(result => {
+  return runHook(className, 'beforeSave', request.data).then(result => {
     const newId = _.uniqueId();
     const now = new Date();
 
@@ -360,12 +383,13 @@ function handlePostRequest(request) {
       { objectId: newId, createdAt: now, updatedAt: now }
     );
 
-    applyOps(newObject, ops, request.className);
+    applyOps(newObject, ops, className);
+    const toOmit = ['updatedAt'].concat(Array.from(getMask(className)));
 
     collection[newId] = newObject;
 
     var response = Object.assign(
-      _.cloneDeep(_.omit(newObject, 'updatedAt')),
+      _.cloneDeep(_.omit(newObject, toOmit)),
       { createdAt: result.createdAt.toJSON() }
     );
 
@@ -374,7 +398,8 @@ function handlePostRequest(request) {
 }
 
 function handlePutRequest(request) {
-  const collection = getCollection(request.className);
+  const className = request.className;
+  const collection = getCollection(className);
   const objId = request.objectId;
   const currentObject = collection[objId];
   const now = new Date();
@@ -395,12 +420,13 @@ function handlePutRequest(request) {
     { updatedAt: now }
   );
 
-  applyOps(updatedObject, ops, request.className);
+  applyOps(updatedObject, ops, className);
+  const toOmit = ['createdAt', 'objectId'].concat(Array.from(getMask(className)));;
 
-  return runHook(request.className, 'beforeSave', updatedObject).then(result => {
+  return runHook(className, 'beforeSave', updatedObject).then(result => {
     collection[request.objectId] = updatedObject;
     var response = Object.assign(
-      _.cloneDeep(_.omit(result, ['createdAt', 'objectId'])),
+      _.cloneDeep(_.omit(result, toOmit)),
       { updatedAt: now }
     );
     return Parse.Promise.as(respond(200, response));
@@ -502,7 +528,7 @@ function fetchObjectByPointer(pointer) {
 function recursivelyMatch(className, where) {
   debugPrint('MATCH', {className, where});
   const collection = getCollection(className);
-  var matches = _.filter(_.values(collection), queryFilter(where));
+  const matches = _.filter(_.values(collection), queryFilter(where));
   debugPrint('MATCHES', {matches});
   return _.cloneDeep(matches); // return copies instead of originals
 }
@@ -631,10 +657,15 @@ const QUERY_OPERATORS = {
     var className = object.className;
     var id = object.objectId;
     var relatedKey = value.key;
-    var relations = getRelation(className, id, relatedKey);
-    return _.some(relations, relation => {
-      return objectsAreEqual(this, relation);
-    });
+    var relations = getCollection(className)[id][relatedKey];
+    if (indirect) {
+      outOfBandResults = relations.reduce((results, relation) => {
+        var matches = recursivelyMatch(relations[0].className, relation);
+        return results.concat(matches);
+      }, new Array());
+    } else {
+      return objectsAreEqual(relations, this);
+    }
   },
 }
 
@@ -664,11 +695,6 @@ function objectsAreEqual(obj1, obj2) {
     return true;
   }
 
-  // objects with ids
-  if (obj1.id !== undefined && obj1.id == obj2.id) {
-    return true;
-  }
-
   // objects
   if (_.isEqual(obj1, obj2)) {
     return true;
@@ -679,16 +705,14 @@ function objectsAreEqual(obj1, obj2) {
     return true;
   }
 
+  // search through array
+  if (Array.isArray(obj1)) {
+    return _.some(obj1, obj => objectsAreEqual(obj, obj2));
+  }
+
   // both dates
   if (isDate(obj1) && isDate(obj2)) {
     return deserializeQueryParam(obj1) === deserializeQueryParam(obj2);
-  }
-
-  // one pointer, one object
-  if (obj1.id !== undefined && obj1.id == obj2.objectId) {
-    return true;
-  } else if (obj2.id !== undefined && obj2.id == obj1.objectId) {
-    return true;
   }
 
   return false;
