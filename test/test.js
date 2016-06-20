@@ -872,16 +872,18 @@ describe('ParseMock', function(){
  */
 
   context('when object has beforeSave hook registered', function() {
-    function beforeSave() {
-      if (this.get("error")) {
+
+    function beforeSavePromise(request) {
+      var brand = request.object;
+      if (brand.get("error")) {
         return Parse.Promise.error("whoah");
       }
-      this.set('cool', true);
-      return Parse.Promise.as(this);
+      brand.set('cool', true);
+      return Parse.Promise.as(brand);
     }
 
     it('runs the hook before saving the model and persists the object', function() {
-      ParseMockDB.registerHook('Brand', 'beforeSave', beforeSave);
+      ParseMockDB.registerHook('Brand', 'beforeSave', beforeSavePromise);
 
       var brand = new Brand();
       assert(!brand.has('cool'));
@@ -899,7 +901,7 @@ describe('ParseMock', function(){
     })
 
     it('rejects the save if there is a problem', function(done) {
-      ParseMockDB.registerHook('Brand', 'beforeSave', beforeSave);
+      ParseMockDB.registerHook('Brand', 'beforeSave', beforeSavePromise);
 
       var brand = new Brand({error: true});
 
