@@ -501,7 +501,9 @@ function includePaths(object, pathsRemaining) {
         return fetched;
       })
     } else {
-      object[path] = fetchObjectByPointer(target);
+      if (object[path].__type == 'Pointer') {
+        object[path] = fetchObjectByPointer(target);
+      }
       includePaths(object[path], pathsRemaining);
     }
   }
