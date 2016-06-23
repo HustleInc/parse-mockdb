@@ -106,25 +106,20 @@ function runHook(className, hookType, data) {
 
     // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
     // value here.
-    var beforeSaveOrBeforeDeleteRequestObject = {
-      installationId: 'parse-mockdb',
-      master: false,
-      object: model,
-      user: "ParseMockDB doesn't define request.user."
-    };
-
-    return hook(beforeSaveOrBeforeDeleteRequestObject).done((beforeSaveOverrideValue) => {
-      debugPrint('HOOK', { beforeSaveOverrideValue });
-
-      // Unlike BeforeDeleteResponse, BeforeSaveResponse might specify
-      var objectToProceedWith =  hookType === 'beforeSave' && beforeSaveOverrideValue
-        ? _.cloneDeep(beforeSaveOverrideValue.toJSON())
-        : model;
-
-      return Parse.Promise.as(_.omit(objectToProceedWith, "ACL"));
+    return hook(makeRequestObject(model, false)).done(() => {
+      return Parse.Promise.as(_.omit(model, "ACL"));
     });
   }
   return Parse.Promise.as(data);
+}
+
+function makeRequestObject(model, useMasterKey) {
+  return {
+      installationId: 'parse-mockdb',
+      master: useMasterKey,
+      object: model,
+      user: "ParseMockDB doesn't define request.user."
+    };
 }
 
 // Destructive. Takes data for update operation and removes all atomic operations.

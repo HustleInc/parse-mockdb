@@ -896,6 +896,8 @@ describe('ParseMock', function(){
           assert(queriedBrand.has('cool'));
           assert(queriedBrand.get('cool'));
         });
+      }).always(function () {
+        assert(!brand.has('cool'));
       });
     })
 
