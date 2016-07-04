@@ -511,7 +511,7 @@ function queryMatchesAfterIncluding(matches, includeClause) {
 function includePaths(object, pathsRemaining) {
   debugPrint('INCLUDE', {object, pathsRemaining})
   const path = pathsRemaining.shift();
-  const target = object[path];
+  const target = !object ? undefined : object[path];
 
   if (target) {
     if (Array.isArray(target)) {
@@ -538,6 +538,11 @@ function includePaths(object, pathsRemaining) {
 function fetchObjectByPointer(pointer) {
   const collection = getCollection(pointer.className);
   const storedItem = collection[pointer.objectId];
+
+  if (storedItem === undefined) {
+    return undefined;
+  }
+
   return Object.assign(
     { __type: "Object", className: pointer.className },
     _.cloneDeep(storedItem)
