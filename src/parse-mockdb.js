@@ -511,7 +511,7 @@ function queryMatchesAfterIncluding(matches, includeClause) {
 function includePaths(object, pathsRemaining) {
   debugPrint('INCLUDE', {object, pathsRemaining})
   const path = pathsRemaining.shift();
-  const target = !object ? undefined : object[path];
+  const target = !object ? null : object[path];
 
   if (target) {
     if (Array.isArray(target)) {
