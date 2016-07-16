@@ -292,7 +292,7 @@ function handleBatchRequest(method, path, data) {
     })
   })
 
-  return Parse.Promise.when(...getResults).then(function(results) {
+  return Parse.Promise.when.apply(null, getResults).then(function(results) {
     return respond(200, arguments);
   })
 }
@@ -511,7 +511,7 @@ function queryMatchesAfterIncluding(matches, includeClause) {
 function includePaths(object, pathsRemaining) {
   debugPrint('INCLUDE', {object, pathsRemaining})
   const path = pathsRemaining.shift();
-  const target = !object ? null : object[path];
+  const target = object && object[path];
 
   if (target) {
     if (Array.isArray(target)) {
