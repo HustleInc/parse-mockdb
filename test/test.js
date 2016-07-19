@@ -472,7 +472,7 @@ describe('ParseMock', function(){
     });
   });
 
-  it("should handle an equalTo null query for an object without a null field", function() {
+  xit("should handle an equalTo null query for an object without a null field", function() {
     return createItemP(30).then(function(item) {
       const store = new Store();
       store.set("item", item);
