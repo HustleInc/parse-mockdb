@@ -252,6 +252,23 @@ describe('ParseMock', function(){
     });
   });
 
+  it.only('should save a nested item and return it with the save', function() {
+    return new Item().save().then(function(item) {
+      const brand = new Brand();
+      const item2 = new Item();
+      item2.id = "ABC";
+      brand.set("items", [item, item2]);
+      return brand.save();
+    }).then(function(brand) {
+      brand.get("items")[0].set("price", 30);
+      brand.set("name", "foo");
+      return brand.save();
+    }).then(function(sbrand) {
+      assert.equal(sbrand.get("items")[0].get("price"), 30);
+      assert.equal(sbrand.get("items")[1].get("price"), undefined);
+    });
+  });
+
   it('should support increment', function() {
     return createItemP(30).then(function(item) {
       item.increment("price", 5);
