@@ -256,20 +256,31 @@ describe('ParseMock', function(){
     return new Item().save({
       price: 45
     }).then(function(item0) {
-      return new Item().save().then(function(item) {
-        const brand = new Brand();
-        const item2 = new Item();
-        item2.id = item0.id; // create pointer to item0
-        brand.set("items", [item, item2]);
-        return brand.save();
-      })
+      return new Item().save({
+        price: 50
+      }).then(function(item2) {
+        return new Item({
+          price: 55
+        }).save().then(function(item3) {
+          const brand = new Brand();
+          const item1 = new Item();
+          item1.id = item0.id; // create pointer to item0
+          brand.set("items", [item1, item2, item3]);
+          return brand.save();
+        });
+      });
     }).then(function(brand) {
+      assert.equal(brand.get("items")[0].get("price"), undefined);
+      assert.equal(brand.get("items")[1].get("price"), 50);
+      assert.equal(brand.get("items")[2].get("price"), 55);
+
       brand.get("items")[0].set("price", 30);
       brand.set("name", "foo");
       return brand.save();
     }).then(function(sbrand) {
-      assert.equal(sbrand.get("items")[0].get("price"), 30);
-      assert.equal(sbrand.get("items")[1].get("price"), undefined);
+      assert.equal(sbrand.get("items")[0].get("price"), undefined);
+      assert.equal(sbrand.get("items")[1].get("price"), 50);
+      assert.equal(sbrand.get("items")[2].get("price"), 30);
     });
   });
 
