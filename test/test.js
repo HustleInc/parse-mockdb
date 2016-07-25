@@ -252,13 +252,17 @@ describe('ParseMock', function(){
     });
   });
 
-  it.only('should save a nested item and return it with the save', function() {
-    return new Item().save().then(function(item) {
-      const brand = new Brand();
-      const item2 = new Item();
-      item2.id = "ABC";
-      brand.set("items", [item, item2]);
-      return brand.save();
+  it('should save a nested item and return it with the save', function() {
+    return new Item().save({
+      price: 45
+    }).then(function(item0) {
+      return new Item().save().then(function(item) {
+        const brand = new Brand();
+        const item2 = new Item();
+        item2.id = item0.id; // create pointer to item0
+        brand.set("items", [item, item2]);
+        return brand.save();
+      })
     }).then(function(brand) {
       brand.get("items")[0].set("price", 30);
       brand.set("name", "foo");
