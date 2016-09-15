@@ -601,6 +601,8 @@ function handlePostRequest(request) {
   const collection = getCollection(className);
 
   return runHook(className, 'beforeSave', request.data).then(result => {
+    const changedKeys = request.data !== result ? Object.keys(result) : [];
+
     const newId = _.uniqueId();
     const now = new Date();
 
@@ -613,12 +615,13 @@ function handlePostRequest(request) {
 
     applyOps(newObject, ops, className);
     const toOmit = ['updatedAt'].concat(Array.from(getMask(className)));
+    const toPick = Object.keys(ops).concat(changedKeys);
 
     collection[newId] = newObject;
 
     const response = Object.assign(
-      _.cloneDeep(_.omit(newObject, toOmit)),
-      { createdAt: result.createdAt.toJSON() }
+      _.cloneDeep(_.omit(_.pick(result, toPick), toOmit)),
+      { objectId: newId, createdAt: result.createdAt.toJSON() }
     );
 
     return Parse.Promise.as(respond(201, response));
@@ -652,9 +655,11 @@ function handlePutRequest(request) {
   const toOmit = ['createdAt', 'objectId'].concat(Array.from(getMask(className)));
 
   return runHook(className, 'beforeSave', updatedObject).then(result => {
+    const changedKeys = updatedObject !== result ? Object.keys(result) : [];
+
     collection[request.objectId] = updatedObject;
     const response = Object.assign(
-      _.cloneDeep(_.omit(result, toOmit)),
+      _.cloneDeep(_.omit(_.pick(result, Object.keys(ops).concat(changedKeys)), toOmit)),
       { updatedAt: now }
     );
     return Parse.Promise.as(respond(200, response));

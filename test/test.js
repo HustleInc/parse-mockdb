@@ -271,7 +271,7 @@ describe('ParseMock', () => {
       assert.equal(brand.get('items')[1].get('price'), 50);
       assert.equal(brand.get('items')[2].get('price'), 55);
 
-      brand.get('items')[0].set('price', 30);
+      brand.get('items')[2].set('price', 30);
       brand.set('name', 'foo');
       return brand.save();
     })
