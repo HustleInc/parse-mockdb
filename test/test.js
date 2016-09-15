@@ -249,37 +249,38 @@ describe('ParseMock', () => {
     });
   });
 
-  it('should save a nested item and return it with the save', function() {
-    return new Item().save({
-      price: 45
-    }).then(function(item0) {
-      return new Item().save({
-        price: 50
-      }).then(function(item2) {
-        return new Item({
-          price: 55
-        }).save().then(function(item3) {
+  it('should save a nested item and return it with the save', () =>
+    new Item().save({
+      price: 45,
+    }).then((item0) =>
+      new Item().save({
+        price: 50,
+      }).then((item2) =>
+        new Item({
+          price: 55,
+        }).save().then((item3) => {
           const brand = new Brand();
           const item1 = new Item();
           item1.id = item0.id; // create pointer to item0
-          brand.set("items", [item1, item2, item3]);
+          brand.set('items', [item1, item2, item3]);
           return brand.save();
-        });
-      });
-    }).then(function(brand) {
-      assert.equal(brand.get("items")[0].get("price"), undefined);
-      assert.equal(brand.get("items")[1].get("price"), 50);
-      assert.equal(brand.get("items")[2].get("price"), 55);
+        })
+      )
+    ).then((brand) => {
+      assert.equal(brand.get('items')[0].get('price'), undefined);
+      assert.equal(brand.get('items')[1].get('price'), 50);
+      assert.equal(brand.get('items')[2].get('price'), 55);
 
-      brand.get("items")[0].set("price", 30);
-      brand.set("name", "foo");
+      brand.get('items')[0].set('price', 30);
+      brand.set('name', 'foo');
       return brand.save();
-    }).then(function(sbrand) {
-      assert.equal(sbrand.get("items")[0].get("price"), undefined);
-      assert.equal(sbrand.get("items")[1].get("price"), 50);
-      assert.equal(sbrand.get("items")[2].get("price"), 30);
-    });
-  });
+    })
+    .then((sbrand) => {
+      assert.equal(sbrand.get('items')[0].get('price'), undefined);
+      assert.equal(sbrand.get('items')[1].get('price'), 50);
+      assert.equal(sbrand.get('items')[2].get('price'), 30);
+    })
+  );
 
   it('should support increment', () =>
     createItemP(30).then((item) => {
