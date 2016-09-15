@@ -593,6 +593,18 @@ function runHook(className, hookType, data) {
   return Parse.Promise.as(data);
 }
 
+function getChangedKeys(originalObject, updatedObject) {
+  if (originalObject === updatedObject) {
+    return [];
+  }
+  return _.reduce(updatedObject, (result, value, key) => {
+    if (!_.isEqual(originalObject[key], value)) {
+      result.push(key);
+    }
+    return result;
+  }, []);
+}
+
 /**
  * Handles a POST request (Parse.Object.save())
  */
@@ -601,7 +613,7 @@ function handlePostRequest(request) {
   const collection = getCollection(className);
 
   return runHook(className, 'beforeSave', request.data).then(result => {
-    const changedKeys = request.data !== result ? Object.keys(result) : [];
+    const changedKeys = getChangedKeys(request.data, result);
 
     const newId = _.uniqueId();
     const now = new Date();
@@ -655,7 +667,7 @@ function handlePutRequest(request) {
   const toOmit = ['createdAt', 'objectId'].concat(Array.from(getMask(className)));
 
   return runHook(className, 'beforeSave', updatedObject).then(result => {
-    const changedKeys = updatedObject !== result ? Object.keys(result) : [];
+    const changedKeys = getChangedKeys(updatedObject, result);
 
     collection[request.objectId] = updatedObject;
     const response = Object.assign(
