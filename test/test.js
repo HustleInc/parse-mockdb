@@ -349,6 +349,34 @@ describe('ParseMock', () => {
     })
   );
 
+  it('should match an item that is within a kilometer radius of a geo point', () =>
+    // the used two points are 133.4 km away according to http://www.movable-type.co.uk/scripts/latlong.html
+    new Item().save({
+      location: new Parse.GeoPoint(49, 7),
+    }).then(item =>
+      new Parse.Query(Item)
+        .withinKilometers('location', new Parse.GeoPoint(48, 8), 134)
+        .find()
+        .then(results => {
+          assert.equal(results[0].id, item.id);
+        })
+    )
+  );
+
+
+  it('should not match an item that is not within a kilometer radius of a geo point', () =>
+    // the used two points are 133.4 km away according to http://www.movable-type.co.uk/scripts/latlong.html
+    new Item().save({
+      location: new Parse.GeoPoint(49, 7),
+    }).then(() =>
+      new Parse.Query(Item)
+        .withinKilometers('location', new Parse.GeoPoint(48, 8), 133)
+        .find()
+    ).then(results => {
+      assert.equal(results.length, 0);
+    })
+  );
+
   it('should support unset', () =>
     createItemP(30).then((item) => {
       item.unset('price');
