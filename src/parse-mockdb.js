@@ -335,6 +335,19 @@ const QUERY_OPERATORS = {
     }
     return undefined;
   },
+  $nearSphere: (operand, value, maxDistanceInRadians) => {
+    // the parse rest guide says that the maximum distance is 100 miles if no explicit maximum
+    // is provided
+    if (_.isUndefined(maxDistanceInRadians) || _.isNull(maxDistanceInRadians)) {
+      maxDistanceInRadians = 100 / 3958.8;
+    }
+    return new Parse.GeoPoint(operand).radiansTo(new Parse.GeoPoint(value)) <= maxDistanceInRadians;
+  },
+  // ignore these additional parameters for the $nearSphere op
+  $maxDistance: () => true,
+  $maxDistanceInRadians: () => true,
+  $maxDistanceInKilometers: () => true,
+  $maxDistanceInMiles: () => true,
 };
 
 function evaluateObject(object, whereParams, key) {
@@ -360,14 +373,36 @@ function evaluateObject(object, whereParams, key) {
       return QUERY_OPERATORS[key].apply(null, [object, whereParams]);
     }
 
+    // $maxDistance... is not an operator for itself but just an additional parameter
+    // for the $nearSphere operator, so we have to fetch this value in advance.
+    let maxDistanceInRadians;
+    if (whereParams) {
+      maxDistanceInRadians = whereParams.$maxDistance || whereParams.$maxDistanceInRadians;
+      if ('$maxDistanceInKilometers' in whereParams) {
+        // according to the js sdk api documentation parse uses a radius of the earth of 6371.0 km
+        maxDistanceInRadians = whereParams.$maxDistanceInKilometers / 6371.0;
+      } else if ('$maxDistanceInMiles' in whereParams) {
+        // according to the js sdk api documentation parse uses a radius of the earth of
+        // 3958.8 miles
+        maxDistanceInRadians = whereParams.$maxDistanceInMiles / 3958.8;
+      }
+    }
+
     // Process each key in where clause to determine if we have a match
     return _.reduce(whereParams, (matches, value, constraint) => {
       const keyValue = deserializeQueryParam(object[key]);
       const param = deserializeQueryParam(value);
+
       // Constraint can take the form form of a query operator OR an equality match
       if (constraint in QUERY_OPERATORS) {  // { age: {$lt: 30} }
-        return matches && QUERY_OPERATORS[constraint].apply(null, [keyValue, param]);
-      }                               // { age: 30 }
+        // we pass the maxDistance parameter to all ops
+        // all except $nearSphere can just ignore that param
+        return matches && QUERY_OPERATORS[constraint].apply(
+          null,
+          [keyValue, param, maxDistanceInRadians]
+        );
+      }
+      // { age: 30 }
       return matches && QUERY_OPERATORS.$eq.apply(null, [keyValue[constraint], param]);
     }, true);
   }
