@@ -246,7 +246,7 @@ describe('ParseMock', () => {
       )
   );
 
-  it.only('should match a query that uses equalTo as contains constraint with 0 as parameter', () =>
+  it('should match a query that uses equalTo as contains constraint with 0 as parameter', () =>
     new Parse.Object('Factory').save({
       items: [0, 1],
     }).then(savedComp => new Parse.Query('Factory')
