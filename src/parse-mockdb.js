@@ -342,11 +342,14 @@ const QUERY_OPERATORS = {
     }
     return undefined;
   },
-  $nearSphere: (operand, value, maxDistanceInRadians) => {
-    if (_.isNil(maxDistanceInRadians)) {
-      maxDistanceInRadians = DEFAULT_MAX_DISTANCE;
+  $nearSphere: (operand, value, additionalArgs) => {
+    let maxDistance = additionalArgs.maxDistanceInRadians;
+
+    if (_.isNil(maxDistance)) {
+      maxDistance = DEFAULT_MAX_DISTANCE;
     }
-    return new Parse.GeoPoint(operand).radiansTo(new Parse.GeoPoint(value)) <= maxDistanceInRadians;
+
+    return new Parse.GeoPoint(operand).radiansTo(new Parse.GeoPoint(value)) <= maxDistance;
   },
   // ignore these additional parameters for the $nearSphere op
   $maxDistance: () => true,
@@ -380,13 +383,13 @@ function evaluateObject(object, whereParams, key) {
 
     // $maxDistance... is not an operator for itself but just an additional parameter
     // for the $nearSphere operator, so we have to fetch this value in advance.
-    let maxDistanceInRadians;
+    const args = {};
     if (whereParams) {
-      maxDistanceInRadians = whereParams.$maxDistance || whereParams.$maxDistanceInRadians;
+      args.maxDistanceInRadians = whereParams.$maxDistance || whereParams.$maxDistanceInRadians;
       if ('$maxDistanceInKilometers' in whereParams) {
-        maxDistanceInRadians = whereParams.$maxDistanceInKilometers / RADIUS_OF_EARTH_KM;
+        args.maxDistanceInRadians = whereParams.$maxDistanceInKilometers / RADIUS_OF_EARTH_KM;
       } else if ('$maxDistanceInMiles' in whereParams) {
-        maxDistanceInRadians = whereParams.$maxDistanceInMiles / RADIUS_OF_EARCH_MILES;
+        args.maxDistanceInRadians = whereParams.$maxDistanceInMiles / RADIUS_OF_EARCH_MILES;
       }
     }
 
@@ -397,11 +400,9 @@ function evaluateObject(object, whereParams, key) {
 
       // Constraint can take the form form of a query operator OR an equality match
       if (constraint in QUERY_OPERATORS) {  // { age: {$lt: 30} }
-        // we pass the maxDistance parameter to all ops
-        // all except $nearSphere can just ignore that param
         return matches && QUERY_OPERATORS[constraint].apply(
           null,
-          [keyValue, param, maxDistanceInRadians]
+          [keyValue, param, args]
         );
       }
       // { age: 30 }
