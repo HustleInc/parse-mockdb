@@ -280,6 +280,13 @@ function recursivelyMatch(className, where) {
   return _.cloneDeep(matches); // return copies instead of originals
 }
 
+// according to the js sdk api documentation parse uses the following radius of the earth
+const RADIUS_OF_EARTH_KM = 6371.0;
+const RADIUS_OF_EARCH_MILES = 3958.8;
+// the parse rest guide says that the maximum distance is 100 miles if no explicit maximum
+// is provided; here we already convert this distance into radians
+const DEFAULT_MAX_DISTANCE = 100 / RADIUS_OF_EARCH_MILES;
+
 /**
  * Operators for queries
  *
@@ -336,10 +343,8 @@ const QUERY_OPERATORS = {
     return undefined;
   },
   $nearSphere: (operand, value, maxDistanceInRadians) => {
-    // the parse rest guide says that the maximum distance is 100 miles if no explicit maximum
-    // is provided
-    if (_.isUndefined(maxDistanceInRadians) || _.isNull(maxDistanceInRadians)) {
-      maxDistanceInRadians = 100 / 3958.8;
+    if (_.isNil(maxDistanceInRadians)) {
+      maxDistanceInRadians = DEFAULT_MAX_DISTANCE;
     }
     return new Parse.GeoPoint(operand).radiansTo(new Parse.GeoPoint(value)) <= maxDistanceInRadians;
   },
@@ -379,12 +384,9 @@ function evaluateObject(object, whereParams, key) {
     if (whereParams) {
       maxDistanceInRadians = whereParams.$maxDistance || whereParams.$maxDistanceInRadians;
       if ('$maxDistanceInKilometers' in whereParams) {
-        // according to the js sdk api documentation parse uses a radius of the earth of 6371.0 km
-        maxDistanceInRadians = whereParams.$maxDistanceInKilometers / 6371.0;
+        maxDistanceInRadians = whereParams.$maxDistanceInKilometers / RADIUS_OF_EARTH_KM;
       } else if ('$maxDistanceInMiles' in whereParams) {
-        // according to the js sdk api documentation parse uses a radius of the earth of
-        // 3958.8 miles
-        maxDistanceInRadians = whereParams.$maxDistanceInMiles / 3958.8;
+        maxDistanceInRadians = whereParams.$maxDistanceInMiles / RADIUS_OF_EARCH_MILES;
       }
     }
 
