@@ -282,10 +282,10 @@ function recursivelyMatch(className, where) {
 
 // according to the js sdk api documentation parse uses the following radius of the earth
 const RADIUS_OF_EARTH_KM = 6371.0;
-const RADIUS_OF_EARCH_MILES = 3958.8;
+const RADIUS_OF_EARTH_MILES = 3958.8;
 // the parse rest guide says that the maximum distance is 100 miles if no explicit maximum
 // is provided; here we already convert this distance into radians
-const DEFAULT_MAX_DISTANCE = 100 / RADIUS_OF_EARCH_MILES;
+const DEFAULT_MAX_DISTANCE = 100 / RADIUS_OF_EARTH_MILES;
 
 /**
  * Operators for queries
@@ -389,7 +389,7 @@ function evaluateObject(object, whereParams, key) {
       if ('$maxDistanceInKilometers' in whereParams) {
         args.maxDistanceInRadians = whereParams.$maxDistanceInKilometers / RADIUS_OF_EARTH_KM;
       } else if ('$maxDistanceInMiles' in whereParams) {
-        args.maxDistanceInRadians = whereParams.$maxDistanceInMiles / RADIUS_OF_EARCH_MILES;
+        args.maxDistanceInRadians = whereParams.$maxDistanceInMiles / RADIUS_OF_EARTH_MILES;
       }
     }
 
