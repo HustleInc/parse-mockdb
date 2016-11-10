@@ -258,6 +258,18 @@ describe('ParseMock', () => {
     )
   );
 
+  it('should not match a query that uses equalTo with [] as field value and 0 as parameter', () =>
+    new Parse.Object('Factory').save({
+      items: [],
+    }).then(() => new Parse.Query('Factory')
+      .equalTo('items', 0)
+      .find()
+      .then(results => {
+        assert.equal(results.length, 0);
+      })
+    )
+  );
+
   it('should save and find an item', () => {
     const item = new Item();
     item.set('price', 30);

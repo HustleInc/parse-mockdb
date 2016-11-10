@@ -55,9 +55,19 @@ function deserializeQueryParam(param) {
  * (e.g. Pointer, Object)
  */
 function objectsAreEqual(obj1, obj2) {
+  // Always search through array on array columns
+  if (Array.isArray(obj1)) {
+    if (Array.isArray(obj2)) {
+      throw new Parse.Error(107, `You cannot use ${obj2} as a query parameter`);
+    } else {
+      return _.some(obj1, obj => objectsAreEqual(obj, obj2));
+    }
+  }
+
   // scalar values (including null/undefined)
-  // eslint-disable-next-line eqeqeq
-  if (obj1 == obj2) {
+  // Note: undefined equals null.
+  // For all other objects, strict equality is applied
+  if (obj1 === obj2 || (_.isNil(obj1) && _.isNil(obj2))) {
     return true;
   }
 
@@ -75,11 +85,6 @@ function objectsAreEqual(obj1, obj2) {
   // both pointers
   if (obj1.objectId !== undefined && obj1.objectId === obj2.objectId) {
     return true;
-  }
-
-  // search through array
-  if (Array.isArray(obj1)) {
-    return _.some(obj1, obj => objectsAreEqual(obj, obj2));
   }
 
   // both dates
