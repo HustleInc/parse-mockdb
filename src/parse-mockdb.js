@@ -376,7 +376,7 @@ function evaluateObject(object, whereParams, key) {
     }
   }
 
-  if (typeof whereParams === 'object') {
+  if (typeof whereParams === 'object' && !Array.isArray(whereParams)) {
     // Handle objects that actually represent scalar values
     if (isPointer(whereParams) || isDate(whereParams)) {
       return QUERY_OPERATORS.$eq.apply(null, [object[key], whereParams]);
@@ -447,8 +447,13 @@ function handleRequest(method, path, body) {
     data: body,
     objectId: explodedPath.shift(),
   };
-  // eslint-disable-next-line no-use-before-define
-  return HANDLERS[method](request);
+
+  try {
+    // eslint-disable-next-line no-use-before-define
+    return HANDLERS[method](request);
+  } catch (e) {
+    return Parse.Promise.error(e);
+  }
 }
 
 function respond(status, response) {

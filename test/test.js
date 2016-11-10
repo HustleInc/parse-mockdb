@@ -258,11 +258,35 @@ describe('ParseMock', () => {
     )
   );
 
-  it('should not match a query that uses equalTo with [] as field value and 0 as parameter', () =>
+  it('should not allow array values as equalTo parameter for array columns', () =>
+    new Parse.Object('Factory').save({
+      items: [0, 1],
+    }).then(() => new Parse.Query('Factory')
+      .equalTo('items', [0, 1])
+      .find()
+      .then(() => Parse.Promise.error(
+          new Error('Promise should have failed')),
+        () => Parse.Promise.as(true))
+    )
+  );
+
+  it('should not match objects with [] as field value and 0 as query parameter', () =>
     new Parse.Object('Factory').save({
       items: [],
     }).then(() => new Parse.Query('Factory')
       .equalTo('items', 0)
+      .find()
+      .then(results => {
+        assert.equal(results.length, 0);
+      })
+    )
+  );
+
+  it('should not match objects with null as field value and \'\' as query parameter', () =>
+    new Parse.Object('Factory').save({
+      name: null,
+    }).then(() => new Parse.Query('Factory')
+      .equalTo('items', '')
       .find()
       .then(results => {
         assert.equal(results.length, 0);
