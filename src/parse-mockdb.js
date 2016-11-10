@@ -376,7 +376,7 @@ function evaluateObject(object, whereParams, key) {
     }
   }
 
-  if (typeof whereParams === 'object' && !Array.isArray(whereParams)) {
+  if (typeof whereParams === 'object' && !Array.isArray(whereParams) && whereParams) {
     // Handle objects that actually represent scalar values
     if (isPointer(whereParams) || isDate(whereParams)) {
       return QUERY_OPERATORS.$eq.apply(null, [object[key], whereParams]);

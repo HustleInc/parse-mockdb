@@ -848,7 +848,7 @@ describe('ParseMock', () => {
     })
   );
 
-  xit('should handle an equalTo null query for an object without a null field', () =>
+  it('should handle an equalTo null query for an object without a null field', () =>
     createItemP(30).then((item) => {
       const store = new Store();
       store.set('item', item);
