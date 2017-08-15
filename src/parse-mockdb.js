@@ -686,7 +686,6 @@ function runHook(className, hookType, data) {
       if (hookType === 'beforeSave' && beforeSaveOverrideValue) {
         objectToProceedWith = beforeSaveOverrideValue.toJSON();
       }
-
       return Parse.Promise.as(_.omit(objectToProceedWith, 'ACL'));
     });
   }
@@ -737,7 +736,7 @@ function handlePostRequest(request) {
     );
 
     return Parse.Promise.as(respond(201, response));
-  });
+  }).then(() => runHook(className, 'afterSave', request.data));
 }
 
 function handlePutRequest(request) {
@@ -775,7 +774,7 @@ function handlePutRequest(request) {
       { updatedAt: now }
     );
     return Parse.Promise.as(respond(200, response));
-  });
+  }).then(() => runHook(className, 'afterSave', updatedObject));
 }
 
 function handleDeleteRequest(request) {
