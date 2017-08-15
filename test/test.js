@@ -169,8 +169,7 @@ function behavesLikeParseObjectOnAfterSave(typeName, ParseObjectOrUserSubclass) 
     const errorMessage = 'Error in afterSave hook test';
     let didAfterSave = false;
     function afterSavePromise(request) {
-      const object = request.object;
-      if (object.get('error')) {
+      if (request.object.get('error')) {
         return Parse.Promise.error(errorMessage);
       }
       didAfterSave = true;
