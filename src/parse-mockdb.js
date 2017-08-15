@@ -736,7 +736,9 @@ function handlePostRequest(request) {
     );
 
     return Parse.Promise.as(respond(201, response));
-  }).then(() => runHook(className, 'afterSave', request.data));
+  })
+  .then(result => runHook(className, 'afterSave', request.data)
+    .then(() => result));
 }
 
 function handlePutRequest(request) {
@@ -774,7 +776,9 @@ function handlePutRequest(request) {
       { updatedAt: now }
     );
     return Parse.Promise.as(respond(200, response));
-  }).then(() => runHook(className, 'afterSave', updatedObject));
+  })
+  .then(result => runHook(className, 'afterSave', updatedObject)
+    .then(() => result));
 }
 
 function handleDeleteRequest(request) {

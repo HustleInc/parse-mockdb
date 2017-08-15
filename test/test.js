@@ -167,13 +167,14 @@ function behavesLikeParseObjectOnBeforeDelete(typeName, ParseObjectOrUserSubclas
 function behavesLikeParseObjectOnAfterSave(typeName, ParseObjectOrUserSubclass) {
   context('when object has afterSave hook registered', () => {
     const errorMessage = 'Error in afterSave hook test';
+    let didAfterSave = false;
     function afterSavePromise(request) {
       const object = request.object;
       if (object.get('error')) {
         return Parse.Promise.error(errorMessage);
       }
-      object.set('cool', true);
-      return Parse.Promise.as(object);
+      didAfterSave = true;
+      return Parse.Promise.as();
     }
 
     it('runs the hook after saving the model and persists the object', () => {
@@ -183,13 +184,8 @@ function behavesLikeParseObjectOnAfterSave(typeName, ParseObjectOrUserSubclass) 
       assert(!object.has('cool'));
 
       return object.save().then((savedObject) => {
-        assert(savedObject.has('cool'));
-        assert(savedObject.get('cool'));
-
-        return new Parse.Query(ParseObjectOrUserSubclass).first().then((queriedObject) => {
-          assert(queriedObject.has('cool'));
-          assert(queriedObject.get('cool'));
-        });
+        assert(!savedObject.has('cool'));
+        assert(didAfterSave);
       });
     });
 
