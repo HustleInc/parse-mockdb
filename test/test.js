@@ -176,6 +176,10 @@ function behavesLikeParseObjectOnAfterSave(typeName, ParseObjectOrUserSubclass) 
       return Parse.Promise.as();
     }
 
+    beforeEach(() => {
+      didAfterSave = false;
+    });
+
     it('runs the hook after saving the model and persists the object', () => {
       ParseMockDB.registerHook(typeName, 'afterSave', afterSavePromise);
 
