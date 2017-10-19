@@ -1,5 +1,3 @@
-'use strict';
-
 const Parse = require('parse-shim');
 const _ = require('lodash');
 
@@ -705,6 +703,13 @@ function getChangedKeys(originalObject, updatedObject) {
   }, []);
 }
 
+function getDate(date = {}) {
+  if (typeof date !== 'object') return null;
+  const { iso } = date;
+  if (!iso) return null;
+  return new Date(iso);
+}
+
 /**
  * Handles a POST request (Parse.Object.save())
  */
@@ -713,17 +718,25 @@ function handlePostRequest(request) {
   const collection = getCollection(className);
 
   let response;
+
   return runHook(className, 'beforeSave', request.data).then(result => {
     const changedKeys = getChangedKeys(request.data, result);
 
     const newId = _.uniqueId();
-    const now = new Date();
+    
+    // Some test would need to define createdAt or updatedAt as specific date..
+
+    const createdAt = getDate(request.data.created_at) || new Date();
+    const updatedAt = getDate(request.data.updated_at) || new Date();
+
+    delete request.data.created_at;
+    delete request.data.updated_at;
 
     const ops = extractOps(result);
 
     const newObject = Object.assign(
       result,
-      { objectId: newId, createdAt: now, updatedAt: now }
+      { createdAt, updatedAt, objectId: newId }
     );
 
     applyOps(newObject, ops, className);
@@ -856,7 +869,7 @@ Parse.MockDB = {
   unMockDB,
   cleanUp,
   promiseResultSync,
-  registerHook,
+  registerHook
 };
 
 module.exports = Parse.MockDB;
