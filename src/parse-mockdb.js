@@ -704,9 +704,8 @@ function getChangedKeys(originalObject, updatedObject) {
 }
 
 function getDate(date = {}) {
-  if (typeof date !== 'object') return null;
+  if (typeof date !== 'object' || !date.iso) return null;
   const { iso } = date;
-  if (!iso) return null;
   return new Date(iso);
 }
 
