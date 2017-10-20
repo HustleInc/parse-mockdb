@@ -868,7 +868,8 @@ Parse.MockDB = {
   unMockDB,
   cleanUp,
   promiseResultSync,
-  registerHook
+  registerHook,
+  db,
 };
 
 module.exports = Parse.MockDB;
