@@ -1,5 +1,6 @@
 const Parse = require('parse-shim');
 const _ = require('lodash');
+global.Parse = Parse;
 
 const DEFAULT_LIMIT = 100;
 const QUOTE_REGEXP = /(\\Q|\\E)/g;
