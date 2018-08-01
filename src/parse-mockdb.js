@@ -227,11 +227,12 @@ function mockUser(_user) {
   user = _user;
 }
 
-function makeRequestObject(model, useMasterKey) {
+function makeRequestObject(original, model, useMasterKey) {
   return {
     installationId: 'parse-mockdb',
     master: useMasterKey,
     object: model,
+    original,
     user,
   };
 }
@@ -687,9 +688,19 @@ function runHook(className, hookType, data) {
     const model = Parse.Object.fromJSON(modelJSON);
     hook = hook.bind(model);
 
+    const collection = getCollection(className);
+    const originalData = Object.assign({}, collection[model.id], { className });
+    let original;
+    if (originalData) {
+      const originalJSON = _.mapValues(originalData,
+        // Convert dates into JSON loadable representations
+        value => ((value instanceof Date) ? value.toJSON() : value)
+      );
+      original = Parse.Object.fromJSON(originalJSON);
+    }
     // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
     // value here.
-    return hook(makeRequestObject(model, false)).then((beforeSaveOverrideValue) => {
+    return hook(makeRequestObject(original, model, false)).then((beforeSaveOverrideValue) => {
       debugPrint('HOOK', { beforeSaveOverrideValue });
 
       // Unlike BeforeDeleteResponse, BeforeSaveResponse might specify
