@@ -680,23 +680,21 @@ function handleGetRequest(request) {
 function runHook(className, hookType, data) {
   let hook = getHook(className, hookType);
   if (hook) {
-    const modelData = Object.assign({}, data, { className });
-    const modelJSON = _.mapValues(modelData,
-      // Convert dates into JSON loadable representations
-      value => ((value instanceof Date) ? value.toJSON() : value)
-    );
-    const model = Parse.Object.fromJSON(modelJSON);
-    hook = hook.bind(model);
-
-    const collection = getCollection(className);
-    const originalData = Object.assign({}, collection[model.id], { className });
-    let original;
-    if (originalData) {
-      const originalJSON = _.mapValues(originalData,
+    const hydrate = (rawData) => {
+      const modelData = Object.assign({}, rawData, { className });
+      const modelJSON = _.mapValues(modelData,
         // Convert dates into JSON loadable representations
         value => ((value instanceof Date) ? value.toJSON() : value)
       );
-      original = Parse.Object.fromJSON(originalJSON);
+      return Parse.Object.fromJSON(modelJSON);
+    };
+    const model = hydrate(data, className);
+    hook = hook.bind(model);
+
+    const collection = getCollection(className);
+    let original;
+    if (collection[model.id]) {
+      original = hydrate(collection[model.id]);
     }
     // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
     // value here.
