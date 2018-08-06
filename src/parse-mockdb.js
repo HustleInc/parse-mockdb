@@ -227,13 +227,20 @@ function mockUser(_user) {
   user = _user;
 }
 
-function makeRequestObject(original, model, useMasterKey) {
+function makeRequestObject({ serializedObject, object, serializedOriginal }) {
+  // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
+  // value here.
   return {
-    installationId: 'parse-mockdb',
-    master: useMasterKey,
-    object: model,
-    original,
     user,
+    installationId: 'parse-mockdb',
+    master: false,
+    object,
+    body: {
+      installationId: 'parse-mockdb',
+      master: false,
+      object: serializedObject,
+      original: serializedOriginal,
+    },
   };
 }
 
@@ -680,25 +687,23 @@ function handleGetRequest(request) {
 function runHook(className, hookType, data) {
   let hook = getHook(className, hookType);
   if (hook) {
-    const hydrate = (rawData) => {
-      const modelData = Object.assign({}, rawData, { className });
-      const modelJSON = _.mapValues(modelData,
-        // Convert dates into JSON loadable representations
-        value => ((value instanceof Date) ? value.toJSON() : value)
-      );
-      return Parse.Object.fromJSON(modelJSON);
-    };
-    const model = hydrate(data, className);
+    const modelData = Object.assign({}, data, { className });
+    const modelJSON = _.mapValues(modelData,
+      // Convert dates into JSON loadable representations
+      value => ((value instanceof Date) ? value.toJSON() : value)
+    );
+    const model = Parse.Object.fromJSON(modelJSON);
     hook = hook.bind(model);
 
     const collection = getCollection(className);
-    let original;
-    if (collection[model.id]) {
-      original = hydrate(collection[model.id]);
-    }
-    // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
-    // value here.
-    return hook(makeRequestObject(original, model, false)).then((beforeSaveOverrideValue) => {
+    const serializedOriginal = collection[model.id];
+
+    const req = makeRequestObject({
+      serializedObject: modelJSON,
+      object: model,
+      serializedOriginal,
+    });
+    return hook(req).then((beforeSaveOverrideValue) => {
       debugPrint('HOOK', { beforeSaveOverrideValue });
 
       // Unlike BeforeDeleteResponse, BeforeSaveResponse might specify
