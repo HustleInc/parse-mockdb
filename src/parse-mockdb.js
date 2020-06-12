@@ -443,7 +443,7 @@ function evaluateObject(object, whereParams, key) {
  * Returns a function that filters query matches on a where clause
  */
 function queryFilter(where) {
-  if (where.$or) {
+  if (where && where.$or) {
     return object =>
       _.reduce(where.$or, (result, subclause) => result ||
         queryFilter(subclause)(object), false);
