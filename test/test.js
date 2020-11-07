@@ -185,15 +185,19 @@ function behavesLikeParseObjectOnAfterSave(typeName, ParseObjectOrUserSubclass) 
   context('when object has afterSave hook registered', () => {
     let didAfterSave;
     let objectInAfterSave;
+    let originalObjectInAfterSave;
     function afterSavePromise(request) {
+      const { original, object } = request;
       didAfterSave = true;
-      objectInAfterSave = request.object;
+      originalObjectInAfterSave = original;
+      objectInAfterSave = object;
       return Promise.resolve();
     }
 
     beforeEach(() => {
       didAfterSave = false;
       objectInAfterSave = {};
+      originalObjectInAfterSave = {};
     });
 
     context('when saving a new object', () => {
@@ -280,6 +284,22 @@ function behavesLikeParseObjectOnAfterSave(typeName, ParseObjectOrUserSubclass) 
           assert.equal(
             objectInAfterSave.id,
             savedObject.id
+          );
+
+          assert.equal(
+            objectInAfterSave.get('name'),
+            'updated'
+          );
+        });
+      });
+
+      it('provide the original and saved object to the afterSave hook', () => {
+        ParseMockDB.registerHook(typeName, 'afterSave', afterSavePromise);
+        object.set('name', 'updated');
+        return object.save().then(() => {
+          assert.equal(
+            originalObjectInAfterSave.get('name'),
+            'original'
           );
 
           assert.equal(
