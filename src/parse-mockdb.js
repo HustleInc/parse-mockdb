@@ -678,8 +678,11 @@ function handleGetRequest(request) {
  * @param {string} className The name of the class to get the hook on.
  * @param {string} hookType One of 'beforeSave', 'afterSave', 'beforeDelete', 'afterDelete'
  * @param {Object} data The Data that is to be hydrated into an instance of className class.
+ * @param {Object} originalData The original data (as it was before an update) or undefined
+ *                              if it was just created; will also be hydrated into an instance
+ *                              of className class.
  */
-function runHook(className, hookType, data) {
+function runHook(className, hookType, data, originalData) {
   let hook = getHook(className, hookType);
   if (hook) {
     const hydrate = (rawData) => {
@@ -690,14 +693,11 @@ function runHook(className, hookType, data) {
       );
       return Parse.Object.fromJSON(modelJSON);
     };
-    const model = hydrate(data, className);
+    const model = hydrate(data, className); //  TODO: remove this
     hook = hook.bind(model);
 
-    const collection = getCollection(className);
-    let original;
-    if (collection[model.id]) {
-      original = hydrate(collection[model.id]);
-    }
+    const original = (originalData !== undefined) ? hydrate(originalData) : undefined;
+
     // TODO Stub out Parse.Cloud.useMasterKey() so that we can report the correct 'master'
     // value here.
     return hook(makeRequestObject(original, model, false)).then((beforeSaveOverrideValue) => {
@@ -792,7 +792,7 @@ function handlePutRequest(request) {
   applyOps(updatedObject, ops, className);
   const toOmit = ['createdAt', 'objectId'].concat(Array.from(getMask(className)));
 
-  return runHook(className, 'beforeSave', updatedObject).then(result => {
+  return runHook(className, 'beforeSave', updatedObject, currentObject).then(result => {
     const changedKeys = getChangedKeys(updatedObject, result);
 
     collection[request.objectId] = updatedObject;
@@ -802,7 +802,7 @@ function handlePutRequest(request) {
     );
     return Promise.resolve(respond(200, response));
   }).then((result) => {
-    runHook(className, 'afterSave', updatedObject);
+    runHook(className, 'afterSave', updatedObject, currentObject);
     return result;
   });
 }
