@@ -693,7 +693,7 @@ function runHook(className, hookType, data, originalData) {
       );
       return Parse.Object.fromJSON(modelJSON);
     };
-    const model = hydrate(data, className); //  TODO: remove this
+    const model = hydrate(data);
     hook = hook.bind(model);
 
     const original = (originalData !== undefined) ? hydrate(originalData) : undefined;
